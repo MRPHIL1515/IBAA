@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #16a085, #8e44ad, #2980b9);
+    background-attachment: fixed;
+    color: white;
+    text-align: center;
+    min-height: 100vh;
+}
+
+.form-box {
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    margin-top: 20px;
+    border-radius: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: rgba(0,0,0,0.6);
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid white;
+}
+
+input, select {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+    color: black;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 10px;
+    margin-top: 20px;
+    padding: 20px;
+}
