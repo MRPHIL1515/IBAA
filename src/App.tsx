@@ -56,9 +56,21 @@ type View = 'landing' | 'home' | 'roster' | 'add-match' | 'add-player' | 'stats'
 export default function App() {
   const [view, setView] = useState<View>('landing');
   const [players, setPlayers] = useState<PlayersData>(() => {
-    const saved = localStorage.getItem('ibaa_espoirs_v1');
+    const saved = localStorage.getItem('ibaa_espoirs_v2');
     if (saved) return JSON.parse(saved);
-    return {};
+    
+    // Roster Officiel par défaut
+    const defaultRoster = [
+      "VEH ELIE", "COULIBALY ISMAEL", "KOFFI DANIEL", "KOUADIO STEVEN", 
+      "YAYA", "KOUAKOU MALLY", "KOUMAN CHRIST", "EBOH EVRAD", 
+      "KOUASSI MOISE", "KADIO SAMUEL", "KONAN KONAN", "ANAS", 
+      "SOUALIO", "AUREL", "PAUL"
+    ];
+    const initial: PlayersData = {};
+    defaultRoster.forEach(name => {
+      initial[name] = [];
+    });
+    return initial;
   });
 
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -90,7 +102,7 @@ export default function App() {
   }, [editingMatch]);
 
   useEffect(() => {
-    localStorage.setItem('ibaa_espoirs_v1', JSON.stringify(players));
+    localStorage.setItem('ibaa_espoirs_v2', JSON.stringify(players));
   }, [players]);
 
   const playerNames = useMemo(() => Object.keys(players).sort(), [players]);
@@ -200,7 +212,7 @@ export default function App() {
 
   const handleResetSystem = () => {
     if (window.confirm("ALERTE : Voulez-vous vraiment réinitialiser TOUT le système ? Toutes les données seront définitivement perdues.")) {
-      localStorage.removeItem('ibaa_espoirs_v1');
+      localStorage.removeItem('ibaa_espoirs_v2');
       setPlayers({});
       setSelectedPlayer(null);
       setIsDeleteMode(false);
@@ -471,7 +483,30 @@ export default function App() {
           <table className="w-full text-left border-collapse">
             <tbody className="divide-y divide-white/5">
               {playerNames.length === 0 ? (
-                <tr><td className="p-20 text-center text-white/10 italic">Aucun athlète</td></tr>
+                <tr>
+                  <td className="p-20 text-center">
+                    <p className="text-white/10 italic mb-6">Aucun athlète détecté</p>
+                    <button 
+                      onClick={() => {
+                        const defaultRoster = [
+                          "VEH ELIE", "COULIBALY ISMAEL", "KOFFI DANIEL", "KOUADIO STEVEN", 
+                          "YAYA", "KOUAKOU MALLY", "KOUMAN CHRIST", "EBOH EVRAD", 
+                          "KOUASSI MOISE", "KADIO SAMUEL", "KONAN KONAN", "ANAS", 
+                          "SOUALIO", "AUREL", "PAUL"
+                        ];
+                        const initial: PlayersData = {};
+                        defaultRoster.forEach(name => {
+                          initial[name] = [];
+                        });
+                        setPlayers(initial);
+                        toast.success("Roster officiel chargé");
+                      }}
+                      className="px-6 py-3 bg-emerald-500 text-black font-black rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-emerald-500/20"
+                    >
+                      Charger Roster Officiel
+                    </button>
+                  </td>
+                </tr>
               ) : (
                 playerNames.map(name => {
                   const matches = players[name];
@@ -550,29 +585,68 @@ export default function App() {
 
   const AddPlayerPage = () => (
     <DashboardLayout title="Nouveau" subtitle="Création de Profil">
-      <section className="bg-white/[0.03] border border-white/5 rounded-3xl p-8 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-bold text-white uppercase tracking-tight">Ajouter un Athlète</h2>
-          {playerNames.length > 0 && (
-            <button 
-              onClick={() => { if (window.confirm("Vider tout ?")) setPlayers({}); }}
-              className="text-[9px] font-black text-rose-500 uppercase tracking-widest"
-            >
-              Vider Roster
+      <div className="space-y-8">
+        <section className="bg-white/[0.03] border border-white/5 rounded-3xl p-8 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-lg font-bold text-white uppercase tracking-tight">Ajouter un Athlète</h2>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  const defaultRoster = [
+                    "VEH ELIE", "COULIBALY ISMAEL", "KOFFI DANIEL", "KOUADIO STEVEN", 
+                    "YAYA", "KOUAKOU MALLY", "KOUMAN CHRIST", "EBOH EVRAD", 
+                    "KOUASSI MOISE", "KADIO SAMUEL", "KONAN KONAN", "ANAS", 
+                    "SOUALIO", "AUREL", "PAUL"
+                  ];
+                  setPlayers(prev => {
+                    const next = { ...prev };
+                    defaultRoster.forEach(name => {
+                      if (!next[name]) next[name] = [];
+                    });
+                    return next;
+                  });
+                  toast.success("Roster officiel restauré");
+                }}
+                className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg text-[9px] font-black text-emerald-500 uppercase tracking-widest transition-all"
+              >
+                Charger Roster Officiel
+              </button>
+              {playerNames.length > 0 && (
+                <button 
+                  onClick={() => { if (window.confirm("Vider tout ?")) setPlayers({}); }}
+                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[9px] font-black text-rose-500 uppercase tracking-widest transition-all"
+                >
+                  Vider Roster
+                </button>
+              )}
+            </div>
+          </div>
+          <form onSubmit={handleAddPlayer} className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Nom Prénom" 
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
+              value={formData.name} 
+              onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
+            />
+            <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-black p-3 rounded-xl transition-all">
+              <Plus className="w-5 h-5" />
             </button>
-          )}
+          </form>
+        </section>
+
+        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6">
+          <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.2em] mb-4">Athlètes Actuels ({playerNames.length})</h3>
+          <div className="flex flex-wrap gap-2">
+            {playerNames.map(name => (
+              <span key={name} className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-white/60">
+                {name}
+              </span>
+            ))}
+            {playerNames.length === 0 && <p className="text-[10px] text-white/20 italic">Aucun joueur enregistré</p>}
+          </div>
         </div>
-        <form onSubmit={handleAddPlayer} className="flex gap-2">
-          <input 
-            type="text" 
-            placeholder="Nom Prénom" 
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none" 
-            value={formData.name} 
-            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
-          />
-          <button type="submit" className="bg-emerald-500 text-black p-3 rounded-xl"><Plus className="w-5 h-5" /></button>
-        </form>
-      </section>
+      </div>
     </DashboardLayout>
   );
 
