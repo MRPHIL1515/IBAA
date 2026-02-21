@@ -18,6 +18,11 @@ import {
   Users,
   Activity,
   LogOut,
+  Bell,
+  MessageSquare,
+  Send,
+  Download,
+  Share2,
   X
 } from 'lucide-react';
 import { 
@@ -51,10 +56,25 @@ interface PlayersData {
   [name: string]: Match[];
 }
 
-type View = 'landing' | 'home' | 'roster' | 'add-match' | 'add-player' | 'stats';
+interface Message {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: string;
+}
+
+type View = 'landing' | 'home' | 'roster' | 'add-match' | 'add-player' | 'stats' | 'feed';
 
 export default function App() {
   const [view, setView] = useState<View>('landing');
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('ibaa_messages_v1');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: '1', author: 'ADMIN', content: 'Bienvenue sur IBAA ESPOIRS ! Utilisez cet espace pour échanger des infos sur les entraînements et matchs.', timestamp: new Date().toISOString() }
+    ];
+  });
+  const [unreadCount, setUnreadCount] = useState(0);
   const [players, setPlayers] = useState<PlayersData>(() => {
     const saved = localStorage.getItem('ibaa_espoirs_v2');
     if (saved) return JSON.parse(saved);
@@ -104,6 +124,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('ibaa_espoirs_v2', JSON.stringify(players));
   }, [players]);
+
+  useEffect(() => {
+    localStorage.setItem('ibaa_messages_v1', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (view === 'feed') setUnreadCount(0);
+  }, [view]);
 
   const playerNames = useMemo(() => Object.keys(players).sort(), [players]);
 
@@ -208,6 +236,23 @@ export default function App() {
       }));
       toast.success(`Statistiques de ${name} réinitialisées`);
     }
+  };
+
+  const handleAddMessage = (author: string, content: string) => {
+    if (!author.trim() || !content.trim()) return;
+    const newMessage: Message = {
+      id: Math.random().toString(36).substr(2, 9),
+      author: author.trim(),
+      content: content.trim(),
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [newMessage, ...prev]);
+    toast.success("Message publié");
+  };
+
+  const handleDeleteMessage = (id: string) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
+    toast.error("Message supprimé");
   };
 
   const handleResetSystem = () => {
@@ -368,6 +413,14 @@ export default function App() {
           <NavButton icon={<Activity className="w-6 h-6" />} label="Home" active={view === 'home'} onClick={() => setView('home')} />
           <NavButton icon={<Users className="w-6 h-6" />} label="Roster" active={view === 'roster'} onClick={() => setView('roster')} />
           <NavButton icon={<Plus className="w-6 h-6" />} label="Match" active={view === 'add-match'} onClick={() => setView('add-match')} />
+          <NavButton icon={
+            <div className="relative">
+              <MessageSquare className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black" />
+              )}
+            </div>
+          } label="Infos" active={view === 'feed'} onClick={() => setView('feed')} />
           <NavButton icon={<BarChart2 className="w-6 h-6" />} label="Stats" active={view === 'stats'} onClick={() => setView('stats')} />
         </div>
       </nav>
@@ -421,6 +474,26 @@ export default function App() {
       </div>
 
       <div className="mt-8 space-y-4">
+        <section className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Download className="w-5 h-5 text-emerald-500" />
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Installer l'App</h3>
+                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Utiliser comme une APK</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                toast.info("Pour installer : Cliquez sur 'Ajouter à l'écran d'accueil' dans le menu de votre navigateur.");
+              }}
+              className="px-4 py-2 bg-emerald-500 text-black text-[10px] font-black rounded-xl uppercase tracking-widest"
+            >
+              Installer
+            </button>
+          </div>
+        </section>
+
         <section className="bg-rose-500/5 border border-rose-500/10 rounded-3xl p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -525,11 +598,32 @@ export default function App() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {isDeleteMode ? (
-                          <button onClick={() => handleDeletePlayer(name)} className="p-2 text-rose-500"><Trash2 className="w-4 h-4" /></button>
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-white/10 ml-auto" />
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {isDeleteMode && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResetPlayerStats(name);
+                              }}
+                              className="px-2 py-1 bg-white/5 border border-white/10 rounded text-[8px] font-black text-white/40 hover:text-white uppercase tracking-widest"
+                            >
+                              Reset
+                            </button>
+                          )}
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePlayer(name);
+                            }}
+                            className={cn(
+                              "p-2 transition-all",
+                              isDeleteMode ? "text-rose-500 bg-rose-500/10 rounded-lg border border-rose-500/20" : "text-white/10 hover:text-rose-500"
+                            )}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -548,14 +642,25 @@ export default function App() {
         <form onSubmit={handleAddMatch} className="space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.15em]">Athlète</label>
-            <select 
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none"
-              value={formData.selectedName}
-              onChange={e => setFormData(prev => ({ ...prev, selectedName: e.target.value }))}
-            >
-              <option value="" className="bg-slate-900">-- Choisir --</option>
-              {playerNames.map(name => <option key={name} value={name} className="bg-slate-900">{name}</option>)}
-            </select>
+            <div className="flex gap-2">
+              <select 
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                value={formData.selectedName}
+                onChange={e => setFormData(prev => ({ ...prev, selectedName: e.target.value }))}
+              >
+                <option value="" className="bg-slate-900">-- Choisir --</option>
+                {playerNames.map(name => <option key={name} value={name} className="bg-slate-900">{name}</option>)}
+              </select>
+              {formData.selectedName && (
+                <button 
+                  type="button"
+                  onClick={() => handleDeletePlayer(formData.selectedName)}
+                  className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -711,8 +816,12 @@ export default function App() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => handleDeleteMatch(selectedPlayer, m.id)}
-                      className="p-2 text-white/10 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteMatch(selectedPlayer, m.id);
+                      }}
+                      className="p-2 text-rose-500/40 hover:text-rose-500 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -733,6 +842,88 @@ export default function App() {
     </div>
   );
 
+  const FeedPage = () => {
+    const [msgAuthor, setMsgAuthor] = useState('');
+    const [msgContent, setMsgContent] = useState('');
+
+    return (
+      <DashboardLayout title="Informations" subtitle="Espace d'échange">
+        <div className="space-y-8">
+          <section className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+              <Send className="w-4 h-4 text-emerald-500" />
+              Publier une info
+            </h3>
+            <div className="space-y-4">
+              <input 
+                type="text" 
+                placeholder="Votre Nom" 
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                value={msgAuthor}
+                onChange={e => setMsgAuthor(e.target.value)}
+              />
+              <textarea 
+                placeholder="Votre message..." 
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none"
+                value={msgContent}
+                onChange={e => setMsgContent(e.target.value)}
+              />
+              <button 
+                onClick={() => {
+                  handleAddMessage(msgAuthor, msgContent);
+                  setMsgContent('');
+                }}
+                className="w-full bg-emerald-500 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Envoyer l'info
+              </button>
+            </div>
+          </section>
+
+          <div className="space-y-4">
+            {messages.map(msg => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={msg.id} 
+                className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl group"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-[10px] font-black text-emerald-500 border border-emerald-500/20">
+                      {msg.author[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-white uppercase tracking-tight">{msg.author}</span>
+                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                        {new Date(msg.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    className="p-2 text-white/5 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-sm text-white/70 leading-relaxed pl-11">{msg.content}</p>
+              </motion.div>
+            ))}
+            {messages.length === 0 && (
+              <div className="text-center py-20 opacity-20">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4" />
+                <p className="text-xs uppercase tracking-widest font-black">Aucune information</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-black">
       <AnimatePresence mode="wait">
@@ -741,6 +932,7 @@ export default function App() {
         {view === 'roster' && <RosterPage key="roster" />}
         {view === 'add-match' && <AddMatchPage key="add-match" />}
         {view === 'add-player' && <AddPlayerPage key="add-player" />}
+        {view === 'feed' && <FeedPage key="feed" />}
         {view === 'stats' && <StatsPage key="stats" />}
       </AnimatePresence>
       <Toaster position="top-center" theme="dark" />
